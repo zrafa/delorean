@@ -1,0 +1,219 @@
+Delorean (DELete Often, the system REtAiN) - a time travel file system
+----------------------------------------------------------------------
+
+Rafael Ignacio Zurita, 2008-2010
+
+
+Introducción
+============
+
+Delorean es un sistema de archivos que mantiene las diferentes versiones de los
+archivos a través del tiempo.
+
+Además, y para poder cumplir con ciertas metas pre-fijadas, Delorean implementa
+la útil característica de poder volver atrás en el tiempo a nivel de procesos 
+del sistema operativo.
+Esto significa que diferentes procesos pueden compartir el mismo sistema de 
+archivos en diferentes puntos en el tiempo.
+
+
+Compilación
+===========
+
+- Antes de compilar se debe tener instalado las librerías de fuse y sus headers.
+  Delorean utiliza la librería de FUSE, los header de FUSE y fuse-utils.
+  En Debian los paquetes a instalar son: fuse-utils, libfuse-dev y
+  libfuse2.
+
+- ejecute 'tar xvzf delorean.tar.gz' para desempaquetar los archivos fuentes.
+- cd delorean/
+
+- ejecutar 'make clean ; make all ' para compilar
+
+
+Testeando delorean
+==================
+
+Para montar y utilizar un sistema de archivos delorean se debe cargar el módulo
+del kernel fuse. Ejecutar 'modprobe fuse' si no se encuentra ya cargado.
+También es necesario crear el directorio para las versiones y el punto de 
+montura del sistema de archivos. Una vez preparado los directorios utilice
+mount.delorean para montar el sistema de archivos.
+
+Por lo que los comandos a ejecutar serían:
+	- modprobe fuse
+	- mkdir -p MOUNT_PATH/.versions+place ; mkdir MOUNT_POINT
+	- ./mount.delorean MOUNT_POINT -o default_permissions -f
+	- cd MOUNT_POINT/
+	- (utilizar..)
+
+Lea el siguiente ejemplo concreto si aún quedan dudas ..:
+# mkdir -p /mnt/fuse/real/.versions+place
+# mkdir /mnt/fuse/mount_point
+# ./mount.delorean /mnt/fuse/mount_point/ -o default_permissions -f
+
+El shell utilizado para montarl el sistema de archivos queda en modo debug,
+utilice otro(s) shell para utilizar el filesystem.
+
+# cd /mnt/fuse/mount_point/
+(utilizar el FS como cualquier otro FS).
+
+Para "desmontar el sistema de archivos delorean utilice umount como siempre.
+Para el ejemplo anterior sería 'umount /mnt/fuse/mount_point'
+
+
+FAQ
+===
+1. ¿Cómo eliminar las versiones guardadas?
+2. ¿Cómo utilizar delorean en un momento pasado?
+3. ¿Cómo traer un archivo que ya no existe (o varios) al presente?
+4. ¿Otro ejemplo de utilización?
+5. ¿Cómo realizar un backup del FS en un punto en el tiempo pasado? (snapshot)
+6. ¿Cuál es la Granularidad?
+7. ¿Porqué algunos programas fallan en el pasado?
+
+
+1. ¿Cómo eliminar las versiones guardadas?
+
+Sencillo. Desmontar y eliminar las versiones.
+Ejemplo:
+# umount /mnt/fuse/mount_point
+# rm -rf /mnt/fuse/real/.versions+place/*
+
+
+2. ¿Cómo utilizar delorean en un momento pasado?
+
+cd MOUNT_POINT
+travel año-mes-dia hora:min:seg commando
+
+Ejemplo:
+# cd /mnt/fuse/mount_point
+# travel 2007-09-07 12:34:20 /bin/bash
+.. y un nuevo bash estará viajando ;-)
+
+(El comando anterior ejecuta un nuevo shell bash en el pasado. A la fecha 
+07 de Septiembre de 2007 a las 12 del mediodía, 34 minutos y 20 segundos).
+
+El shell y todos los descendientes de ese shell verán el FS al momento pasado
+mencionado.
+
+
+3. ¿Cómo traer un archivo que ya no existe (o varios) al presente?
+Un simple ejemplo:
+
+# date; ls
+Tue Sep  4 22:37:59 ART 2007
+sex_pistols.ogg	fat_boy_slim.ogg
+# sleep 10; date; rm *.ogg
+Tue Sep  4 22:38:20 ART 2007
+# ls
+#
+# travel 2007-09-04 22:38:05 /bin/bash
+# ls
+sex_pistols.ogg	fat_boy_slim.ogg
+# cp *.ogg /tmp
+# exit
+# cd /tmp
+# ls
+sex_pistols.ogg	fat_boy_slim.ogg
+
+En el ejemplo anterior se copiaron dos archivos ogg (que ya no existían) al 
+directorio /tmp (el cual está en el presente).
+
+
+4. ¿Otro ejemplo de utilización?
+
+# date; ls
+Tue Sep  4 22:37:59 ART 2007
+sex_pistols.mp3	fat_boy_slim.mp3
+# sleep 10; date; rm *.mp3
+Tue Sep  4 22:38:20 ART 2007
+# ls
+#
+# travel 2007-09-04 22:38:05 /bin/bash
+# ls
+sex_pistols.mp3	fat_boy_slim.mp3
+# mplayer *.mp3
+
+:)
+
+Advertencia:	a veces un viaje al pasado confunde :).. Desde que algunos
+		archivos actuales tambien fueron los mismos en el pasado, se 
+		mezclan con archivos del pasado que ya no existen. Y algunas
+		veces existe la sensación de que el FS devuelve información
+		incorrecta. En general, cuando uno chequea quien está, quien se 
+		fue, quien está y estuvo .. todo se aclara.
+
+
+5. ¿Cómo realizar un backup del FS en un punto en el tiempo pasado? (snapshot)
+Muy pavo a esta altura... Desde los ejemplos anteriores:
+
+# date; ls
+Tue Sep  4 22:37:59 ART 2007
+sex_pistols.mp3	fat_boy_slim.mp3
+# sleep 10; date; rm *.mp3
+Tue Sep  4 22:38:20 ART 2007
+# ls
+#
+# travel 2007-09-04 22:38:05 /bin/bash
+# ls
+sex_pistols.mp3	fat_boy_slim.mp3
+# tar cvzf /tmp/backup.tar.gz .
+
+
+6. ¿Cuál es la Granularidad?
+
+El sistema de archivos guarda como máximo una versión por segundo de cada
+archivo que se modifica.
+
+Cada nueva operación open guarda una copia del archivo (si es que no existe
+ya algún proceso que tenga un descriptor a ese archivo abierto). Cuando
+se realiza el último close (un release en donde no queden procesos con descriptores
+a ese archivo abierto) se comparan las versiones. Si las versiones difieren, el FS
+mantiene la copia. Si no la descarta.
+
+Por lo tanto el sistema de archivos guarda una única versión entre el primer
+open a un archivo y su ultimo close (release). Esto significa que si luego del
+primer open y antes del ultimo close (release) existen varias operaciones
+open/read/write/close el sistema de archivos no realizará nuevos respaldos de
+versiones.
+
+
+7. ¿Porqué algunos programas fallan en el pasado?
+
+El sistema de archivos es de solo lectura cuando un proceso lo utiliza en un
+punto de tiempo pasado. Por lo que programas que necesiten generar temporales
+o escribir directamente deberían reportar al usuario que no pueden escribir.
+
+Si los procesos utilizan el número de inodo de los archivos para realizar su
+tarea pueden "confundirse" :P .. Los números de inodos no son mantenidos en las
+versiones respaldadas, por lo que extrañan situaciones pueden suceder con tales
+programas :)
+
+Un move de un archivo en el sistema de archivos actual va a devolver como 
+resultado dos archivos en el pasado. ¿Por qué sucede esto?... Bien, esta 
+situación se da porque el archivo movido mantiene su fecha de modificación 
+(fecha de modificación del contenido), y luego, en un punto del tiempo
+pasado el FS va a detectar esas dos versiones como si hubieran "vivido" en el
+mismo momento (la versión original antes del move va a existir para el 
+sistema de archivos hasta el momento en que fue movido, y para la versión
+destino del move delorean "interpreta" que nació en el mismo momento que 
+la versión original y vive o vivió en un futuro posterior al move). Suena
+raro. Lo mejor es realizar una prueba sencilla de mover un archivo a otro
+directorio. Y viajar con un shell a un punto anterior al move. delorean
+devolverá ambas versiones... No me gusta esa forma de trabajar.. Habrá que
+mejorarla.
+
+Si se mueve un directorio en el sistema de archivos actual no se guardan
+versiones. Y en un punto del tiempo anterior al move el sistema de archivos
+no va a detectar esas versiones.. :( Esto es así porque el FS chequea si el contenido
+de los archivos cambia, pero no lo relacionado con el contenido de los directorios
+o de los inodos. Cuando un proceso utiliza el sistema de archivos en un punto 
+de tiempo pasado delorean intenta deducir que directorios existían por conocer
+donde residían los archivos de los cuales si tiene conocimiento en cuanto a
+tiempo de vida. 
+
+Leer el código para comprender todas estas respuestas ;-)
+
+
+

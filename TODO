@@ -1,0 +1,54 @@
+* Warnings/problema por no realizar casts [HECHO]
+
+* Hacer que un usuario normal pueda montar y/o utilizar el FS [HECHO]
+
+* Cambiar el locale, 
+
+* Corregir los char[256] [HECHO]
+
+* Cuando un proceso viaja al pasado el FS busca en cada directorio dos veces:
+	1- una vez en el presente
+	2- una vez en el pasado
+  Si los nombres de los directorios coinciden getdir devuelve el mismo nombre
+  dos veces. Debo chequear cada entrada en el directorio para que aparezca
+  una única vez. [HECHO]
+
+* Estoy utilizando la versión 23 de Fuse la cual ya es casi obsoleta. 
+  Debo migrar a la versión 26 al menos. El getdir actual debe ser reemplazado
+  por opendir, readdir, closedir. [HECHO]
+
+* "travel" utiliza un archivo para coordinar su estado con su proceso hijo,
+  en vez de utilizar semáforos!!! .. corregir eso antes que lo vea JS :P
+
+* Terminar de cambiar los *buf=malloc por buf simplemente (en 
+  los struct stat *buf=malloc(size_of(struct stat *)) [HECHO]
+
+* Los buf[res]=0 no deberian ser buf[res]='\0' ???!
+
+* En statfs debo realizar las cuentas locas: espacio_ocupado - espacio_ocupado_
+  por_las_versiones, espacio_libre + espacio_ocupado_por_las_versiones, etc..
+
+* Modificar dlorean.c para que tome como argumentos a real_path y mount_point. [HECHO]
+
+* Implementar la eliminación dinámica de las versiones mas antiguas de los
+respaldos de manera transparente para el usuario (cuando el FS se llene y
+los procesos soliciten escribir).
+
+* Implementar en el du que cada vez que se ingresa a un directorio se
+haga un chequeo de si el directorio pertenece al mismo sistema
+de archivos.
+
+* Cuando exista un write se debe: chequear el espacio real disponible, si
+no es suficiente borrar el archivo mas viejo y realizar nuevamente el chequeo,
+etc. Hasta que se libere espacio suficiente.
+  
+* Implementar el borrado del archivo mas viejo de forma directa:
+- ingresar a .versions+place.
+- recorrer en busca del archivo/directorio mas viejo (y que pertenezca a ese
+  file system) en el directorio. Tener en cuenta que cuando se encuentra un
+  directorio se debe chequear si contiene archivos antes de tenerlo en cuenta.
+  (esta característica podría no ser necesaria, ya que dlorean siempre guarda
+   directorios con archivos dentro.. pero si alguien hizo un borrado manual
+   de alguna versión el FS podría ser mas robusto actuando de esta manera):
+  	+ si es un archivo borrar.
+  	+ si es un directorio entrar y comenzar la búsqueda dentro de ese directorio.

@@ -1,0 +1,31 @@
+Lista de cambios informal
+=========================
+
+Version testing actual 0.4
+
+Version de desarrollo 0.1.28
+
+0.4
+---
+
+Se corrige el chequeo de ddir_flag en fc_getdir() en flux_capacitor.c; el
+cual omitia el if original and generaba una salida incorrecta 
+(utilizando la opcion else). Chequear un diff para conocer mas detalles.
+
+0.3 
+---
+
+Desde la primera version testing 0.1 (la cual fue lo suficientemente funcional
+para pruebas) se hicieron los siguiente cambios :
+
+* Se corrige la funcion get_fn() para que reserve (malloc) la cantidad
+  apropiada de memoria a utilizar.
+
+* Se corrige la funcion get_fn() para que si f == / entonces simplemente
+  salga de la funcion y devuelva /
+
+* Se corrige el bug en travel que utilizaba incorrectamente la estructura
+  tm de time.h. En travel no se inicializaba completamente tal estructura,
+  por lo que en algunos sistemas Linux el timestamp utilizado con travel
+  era modificado por el daylight saving time del sistema.
+  Reportado y testeado por Claudio Vaucheret (Universidad Nacional del Comahue).
